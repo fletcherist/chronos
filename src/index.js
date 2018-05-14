@@ -64,9 +64,6 @@ PRESETS.linear = (() => {
   return null
 })()
 
-console.log(PRESETS.gaussian({
-  values: 10
-}))
 
 class Network {
   constructor() {
@@ -107,19 +104,29 @@ const getTimeFromDayBeginning = () => {
 }
 
 const getTimePassed = () => getTimeFromDayBeginning() / ONE_DAY
-console.log(getTimePassed())
+const getDistributionPointSum = (distribution) => distribution.y.reduce((acc, el) =>
+  acc + el, 0)
+const getDistributionPointRelation = (distribution) => {
+  const distributionYSum = getDistributionPointSum(distribution)
+  return distribution.y.map(yValue => yValue / distributionYSum) // Sum equals to 1
+}
 
-console.log(Date.now())
+
 class Client extends Network {
   constructor() {
     super()
     this.client = this.addClient()
     this.preset = null
     this.presets = PRESETS
+    this.currentPreset = this.presets.gaussian
     console.log(this.client)
   }
 
   subscribe(observer) {
+    this.distribution = this.currentPreset({
+      values: 10
+    })
+    console.log('sum', getDistributionPointRelation(this.distribution))
     observer.call()
     setTimeout(() => {
       return observer.call()

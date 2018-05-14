@@ -23,11 +23,19 @@ const range = (from, to) => {
   for (let i = from; i < to; i++) arr[i] = i
   return arr
 }
+const sum = array => array.reduce((acc, el) => acc + el, 0)
 const inBetween = (from, to) => value => Math.max(from, Math.min(value, to))
 const inBetweenArray = (from, to) => (values) => values.map(value => inBetween(from, to, value))
 const withProbability = probability => Math.random() > (1 - probability)
 
+
+const getDistributionPointRelation = (axisValues) => {
+  const axisSum = sum(axisValues)
+  return axisValues.map(value => value / axisSum) // Sum always equals to 1
+}
+
 const PRESETS = {}
+
 // Normal (Gaussian) Distribution
 // Check out https://en.wikipedia.org/wiki/Normal_distribution
 PRESETS.gaussian = (() => {
@@ -55,7 +63,11 @@ PRESETS.gaussian = (() => {
     const xs = range(0, values).map(x => x / values)
     const ys = xs.map(x => distributionFunction(x, power, peak))
     const xsys = xs.map((x, index) => [x, ys[index]])
-    return { x: xs, y: ys }
+    return {
+      x: xs,
+      y: ys,
+      relation: getDistributionPointRelation(ys)
+    }
   }
 })()
 
@@ -63,6 +75,8 @@ PRESETS.gaussian = (() => {
 PRESETS.linear = (() => {
   return null
 })()
+
+PRESETS.defaultPreset = PRESETS.gaussian
 
 
 class Network {
@@ -104,21 +118,27 @@ const getTimeFromDayBeginning = () => {
 }
 
 const getTimePassed = () => getTimeFromDayBeginning() / ONE_DAY
-const getDistributionPointSum = (distribution) => distribution.y.reduce((acc, el) =>
-  acc + el, 0)
-const getDistributionPointRelation = (distribution) => {
-  const distributionYSum = getDistributionPointSum(distribution)
-  return distribution.y.map(yValue => yValue / distributionYSum) // Sum equals to 1
-}
+
+// calc how many actions will be fired on that particular point
+const spreadActionsOnPointRelation = (actions, pointRelation) =>
+  pointRelation.map(point => point * actions)
 
 
 class Client extends Network {
-  constructor() {
+  constructor({
+    actions,
+    per,
+    preset = PRESETS.defaultPreset
+  }) {
     super()
     this.client = this.addClient()
     this.preset = null
     this.presets = PRESETS
-    this.currentPreset = this.presets.gaussian
+    this.currentPreset = preset
+
+    this.actions = actions
+    this.per = per
+
     console.log(this.client)
   }
 
@@ -126,7 +146,10 @@ class Client extends Network {
     this.distribution = this.currentPreset({
       values: 10
     })
-    console.log('sum', getDistributionPointRelation(this.distribution))
+
+    const actionsPerPoint = spreadActionsOnPointRelation(this.actions, this.distribution.relation)
+    console.log('actions per point', actionsPerPoint)
+
     observer.call()
     setTimeout(() => {
       return observer.call()
@@ -146,7 +169,10 @@ class Client extends Network {
   }
 }
 
-const client = new Client()
+const client = new Client({
+  actions: 100,
+  per: ONE_HOUR
+})
 
 let count = 0
 client.subscribe(function() {

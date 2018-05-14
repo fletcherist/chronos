@@ -1,4 +1,31 @@
-const Rx = require('rxjs')
+const withProbability = probability => Math.random() > (1 - probability)
+const gaussianPartPI = (x, a, b) => 1 / a * Math.sqrt(2 * Math.PI)
+const gaussianPartE = (x, a, b) => (Math.E ** (- Math.pow(x - b, 2) / Math.pow(a, 2)))
+const gaussianFn = (x, a = 0.6, b = 0.5) => gaussianPartPI(x, a, b) * gaussianPartE(x, a, b)
+const chronosDistribution = (x, a = 0.5, b = 0.5) =>
+  gaussianPartE(x, a, b)
+const range = (from, to) => {
+  const arr = []
+  for (let i = from; i < to; i++) arr[i] = i
+  return arr
+}
+const inBetween = (from, to) => (values) => null
+
+const compensatePeak = peak => peak - 0.05
+const compensatePower = power => power
+
+const testFn = () => {
+  const maxVal = 10
+
+  const PEAK_AT = compensatePeak(0.5)
+  const POWER = compensatePower(1)
+  const source = range(0, maxVal)
+    .map(x => x / maxVal)
+    .map(x => chronosDistribution(x, POWER, PEAK_AT))
+    .forEach(v => console.log(v))
+}
+
+testFn()
 
 class Network {
   constructor() {
@@ -57,14 +84,10 @@ class Client extends Network {
   }
 }
 
-const client = new Client()
+// const client = new Client()
 
-let count = 0
-client.subscribe(function() {
-  console.log('hello world', count++)
-})
+// let count = 0
+// client.subscribe(function() {
+//   console.log('hello world', count++)
+// })
 
-const withProbability = probability => Math.random() > (1 - probability)
-const gaussianFn = (x, a, b) =>
-  1 / a * Math.sqrt(2 * Math.PI) *
-  (Math.E ** (- (x - b) / 2 * Math.pow(a, 2)))

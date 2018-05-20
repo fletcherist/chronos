@@ -63,11 +63,11 @@ PRESETS.gaussian = (() => {
     const xs = range(0, values).map(x => x / values)
     const ys = xs.map(x => distributionFunction(x, power, peak))
     const xsys = xs.map((x, index) => [x, ys[index]])
-    return {
+    return Object.freeze({
       x: xs,
       y: ys,
       relation: getDistributionPointRelation(ys)
-    }
+    })
   }
 })()
 
@@ -89,7 +89,11 @@ class Network {
     const clientId = (this.counter++).toString()
     this.clients[clientId] = {
       id: clientId,
-      timestampAdded: Date.now()
+      timestampAdded: Date.now(),
+      stats: {
+        success: 0,
+        error: 0
+      }
     }
     return this.clients[clientId]
   }
@@ -117,11 +121,14 @@ const getTimeFromDayBeginning = () => {
   return now - dateBeginning
 }
 
-const getTimePassed = () => getTimeFromDayBeginning() / ONE_DAY
+const getTimePassed = (startSubscriptionTime, allTime) =>
+  (Date.now() - startSubscriptionTime) / allTime
 
 // calc how many actions will be fired on that particular point
 const spreadActionsOnPointRelation = (actions, pointRelation) =>
   pointRelation.map(point => point * actions)
+const findCurrentPointIndex = (distribution, timePassed) =>
+  Math.floor(distribution.x.length * timePassed)
 
 
 class Client extends Network {
@@ -139,25 +146,45 @@ class Client extends Network {
     this.actions = actions
     this.per = per
 
-    console.log(this.client)
+    this.startSubscriptionTime = null
   }
 
   subscribe(observer) {
     this.distribution = this.currentPreset({
-      values: 10
+      values: 600
     })
+    this.actionsPerPoint = spreadActionsOnPointRelation(this.actions, this.distribution.relation)
 
-    const actionsPerPoint = spreadActionsOnPointRelation(this.actions, this.distribution.relation)
-    console.log('actions per point', actionsPerPoint)
+    this.startSubscriptionTime = Date.now()
+    this.observer = observer
 
-    observer.call()
-    setTimeout(() => {
-      return observer.call()
-    }, 1000)
+    console.log('actions per point', this.actionsPerPoint)
+    console.log(this.per)
+
+    return this.tick()
+  }
+
+  tick() {
+    const timePassed = getTimePassed(this.startSubscriptionTime, this.per)
+    const currentPointIndex = findCurrentPointIndex(this.distribution, timePassed)
+
+    if (!this.actionsPerPoint[currentPointIndex]) {
+      this.startSubscriptionTime = Date.now()
+      return this.tick()
+    }
+    const timeout = 1000 / this.actionsPerPoint[currentPointIndex]
+
+
+    this.timeoutId = setTimeout(() => {
+      console.log(timeout, this.actionsPerPoint[currentPointIndex])
+      this.observer.call()
+      return this.tick()
+    }, timeout)
   }
 
   unsubscribe() {
-
+    clearTimeout(this.timeoutId)
+    this.timeoutId = null
   }
 
   next() {
@@ -170,13 +197,13 @@ class Client extends Network {
 }
 
 const client = new Client({
-  actions: 100,
-  per: ONE_HOUR
+  actions: 1000,
+  per: 1000 * 60 * 60 * 24
 })
 
 let count = 0
 client.subscribe(function() {
-  console.log('hello world', count++)
+  console.log('' + count++)
 })
 
 setTimeout(() => null, 100000)

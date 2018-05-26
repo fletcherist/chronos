@@ -152,7 +152,7 @@ class Client extends Network {
 
   subscribe(observer) {
     this.distribution = this.currentPreset({
-      values: this.DISTRIBUTION_POINTS
+      values: this.DISTRIBUTION_POINTS_COUNT
     })
     this.actionsPerPoint = spreadActionsOnPointRelation(this.actionsNeeded, this.distribution.relation)
     this.timeElapsedOnPoint = this.per / this.DISTRIBUTION_POINTS_COUNT
@@ -210,8 +210,6 @@ let count = 0
 client.subscribe(function() {
   return false
 })
-
-setTimeout(() => null, 100000)
 
 module.exports.presets = PRESETS
 

@@ -28,7 +28,6 @@ const inBetween = (from, to) => value => Math.max(from, Math.min(value, to))
 const inBetweenArray = (from, to) => (values) => values.map(value => inBetween(from, to, value))
 const withProbability = probability => Math.random() > (1 - probability)
 
-
 const getDistributionPointRelation = (axisValues) => {
   const axisSum = sum(axisValues)
   return axisValues.map(value => value / axisSum) // Sum always equals to 1
@@ -143,17 +142,20 @@ class Client extends Network {
     this.presets = PRESETS
     this.currentPreset = preset
 
-    this.actions = actions
+    this.actionsNeeded = actions
+    this.actionsCompleted = 0
     this.per = per
+    this.DISTRIBUTION_POINTS_COUNT = 100
 
     this.startSubscriptionTime = null
   }
 
   subscribe(observer) {
     this.distribution = this.currentPreset({
-      values: 600
+      values: this.DISTRIBUTION_POINTS
     })
-    this.actionsPerPoint = spreadActionsOnPointRelation(this.actions, this.distribution.relation)
+    this.actionsPerPoint = spreadActionsOnPointRelation(this.actionsNeeded, this.distribution.relation)
+    this.timeElapsedOnPoint = this.per / this.DISTRIBUTION_POINTS_COUNT
 
     this.startSubscriptionTime = Date.now()
     this.observer = observer
@@ -172,11 +174,14 @@ class Client extends Network {
       this.startSubscriptionTime = Date.now()
       return this.tick()
     }
-    const timeout = 1000 / this.actionsPerPoint[currentPointIndex]
-
-
+    const timeout = this.timeElapsedOnPoint / this.actionsPerPoint[currentPointIndex]
     this.timeoutId = setTimeout(() => {
-      console.log(timeout, this.actionsPerPoint[currentPointIndex])
+      // console.log(
+      //   'completed', this.actionsCompleted / this.actionsNeeded,
+      //   'time elapsed', timePassed,
+      //   'app', timeout
+      // )
+      this.actionsCompleted++
       this.observer.call()
       return this.tick()
     }, timeout)
@@ -197,13 +202,13 @@ class Client extends Network {
 }
 
 const client = new Client({
-  actions: 1000,
-  per: 1000 * 60 * 60 * 24
+  actions: 10000,
+  per: 1000 * 60
 })
 
 let count = 0
 client.subscribe(function() {
-  console.log('' + count++)
+  return false
 })
 
 setTimeout(() => null, 100000)
